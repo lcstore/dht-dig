@@ -1,6 +1,7 @@
 var DHT = require('bittorrent-dht')
 // var magnet = require('magnet-uri')
 var util = require('util')
+var request=require('request');
 
 var opts = {
   concurrency:2
@@ -10,13 +11,6 @@ var dht = new DHT(opts)
 // dht.on('peer', function (peer, infoHash, from) {
 //   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
 // })
-dht.on('announce', function (peer, infoHash, from) {
-  var destObj = {};
-  destObj.peer = peer;
-  destObj.from = from;
-  destObj.infoHash = infoHash.toString('hex');
-  console.log('announce:' + JSON.stringify(destObj))
-})
 
 dht.listen(6881, function () {
   console.log('now listening')
@@ -32,3 +26,28 @@ for (var i = 0; i < oInfoHashArr.length; i++) {
 	var sInfoHash = oInfoHashArr[i];
 	dht.lookup(sInfoHash)
 };
+
+
+
+var options = {
+	headers: {"Connection": "close",'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.94 Safari/537.36'},
+    url: 'http://localhost:8090/taskmgr/createtasks',
+    method: 'POST',
+    json:true,
+    body: {data:{channel : "aaa",appkey : "bbb"}}
+};
+
+function callback(error, response, data) {
+    if (!error && response.statusCode == 200) {
+        console.log('----info------',data);
+    }
+}
+
+dht.on('announce', function (peer, infoHash, from) {
+  var destObj = {};
+  destObj.peer = peer;
+  destObj.from = from;
+  destObj.infoHash = infoHash.toString('hex');
+  console.log('announce:' + JSON.stringify(destObj))
+  request(options, callback);
+});

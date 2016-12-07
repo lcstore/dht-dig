@@ -11,7 +11,8 @@
     "url": "https://github.com/lcstore/dht-dig/issues"
   },
   "dependencies": {
-    "bittorrent-dht": "^7.4.0"
+    "bittorrent-dht": "^7.4.0",
+    "request": "^2.79.0"
   },
   "devDependencies": {
     "ip": "^1.1.0",
@@ -35,6 +36,5 @@
     "type": "git",
     "url": "git://github.com/lcstore/dht-dig.git"
   },
-  "scripts": {
-  }
+  "scripts": {}
 }
