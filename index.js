@@ -2,10 +2,10 @@ var DHT = require('bittorrent-dht')
 // var magnet = require('magnet-uri')
 var util = require('util')
 
-// var uri = 'magnet:?xt=urn:btih:83790a9ce6fbbedfb831cc2cb7f430cfc45874e1'
-// var parsed = magnet(uri)
-
-var dht = new DHT()
+var opts = {
+  concurrency:2
+}
+var dht = new DHT(opts)
 
 // dht.on('peer', function (peer, infoHash, from) {
 //   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
