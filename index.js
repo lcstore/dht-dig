@@ -41,13 +41,7 @@ for (var i = 0; i < oInfoHashArr.length; i++) {
 
 
 setInterval(function() {
-  var destObj = {};
-  destObj.peer = {host:'127.0.0.1',port:999};
-  destObj.infoHash = 'd59643a3bdbe93f8c718e4e3ca2dd1b57cb4b4fe';
-  oHashSet[destObj.infoHash] = destObj;
-  destObj.infoHash = 'd5ac839e417b8446a8dae17051692e1e09c629c4';
-  oHashSet[destObj.infoHash] = destObj;
-  var type = 'torrent-info';
+  var type = 'megnet-torrent-info';
   var level = 100;
   var oTaskArr = [];
   var keySet = Object.keys(oHashSet);
@@ -64,10 +58,9 @@ setInterval(function() {
     oTask.args.retry = 0;
     oTask.args.peer = oPeer.host+':'+oPeer.port;
     oTaskArr.push(oTask);
-    delete oHashSet[key];
   };
-  console.log('create task:'+oTaskArr.length+',total:'+keySet.length)
   if(oTaskArr.length<1){
+    console.log('skip create task:'+oTaskArr.length+',total:'+keySet.length)
     return;
   }
   var options = {
@@ -80,10 +73,16 @@ setInterval(function() {
   options.form = {};
   options.form.tasks = JSON.stringify(oTaskArr)
   request.post(options, function(error,response,body){ 
+    var msg = 'create task:'+oTaskArr.length+',total:'+keySet.length;
     if(error){
-      console.error('error:'+error.name+',msg:'+error.message);
+      console.error(msg+',error:'+error.name+',msg:'+error.message);
     }else {
-      console.log('statusCode:'+response.statusCode+',body:'+body)
+      console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
+      for (var it = 0; it < oTaskArr.length; it++) {
+        var oTask = oTaskArr[it];
+        var infoHash = oHashSet.url;
+        delete oHashSet[infoHash];
+      };
     }
   });
-}, 1000);
+}, 60000);
