@@ -1,7 +1,8 @@
-var DHT = require('bittorrent-dht')
+const DHT = require('bittorrent-dht')
 // var magnet = require('magnet-uri')
-var util = require('util')
-var request=require('request');
+const util = require('util')
+const request=require('request');
+const moment=require('moment');
 
 var opts = {
   concurrency:2
@@ -12,9 +13,9 @@ var oHashSet = {};
 // dht.on('peer', function (peer, infoHash, from) {
 //   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
 // })
-
-dht.listen(6881, function () {
-  console.log('now listening')
+var port = 6881;
+dht.listen(port, function () {
+  console.log('['+currentDate()+']listening on:'+port)
 })
 
 dht.on('announce', function (peer, infoHash, from) {
@@ -22,7 +23,7 @@ dht.on('announce', function (peer, infoHash, from) {
   destObj.peer = peer;
   // destObj.from = from;
   destObj.infoHash = infoHash.toString('hex');
-  console.log('announce:' + JSON.stringify(destObj))
+  console.log('['+currentDate()+']announce:' + JSON.stringify(destObj))
   oHashSet[destObj.infoHash] = destObj;
 });
 
@@ -55,12 +56,16 @@ setInterval(function() {
     oTask.level = level;
     oTask.url = oHash.infoHash;
     oTask.args = {};
+    var oUKey = {};
+    oUKey.key = oHash.infoHash;
+    oUKey.expire = 18000;
+    oTask.args.ukey = JSON.stringify(oUKey);
     oTask.args.retry = 0;
     oTask.args.peer = oPeer.host+':'+oPeer.port;
     oTaskArr.push(oTask);
   };
   if(oTaskArr.length<1){
-    console.log('skip create task:'+oTaskArr.length+',total:'+keySet.length)
+    console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
     return;
   }
   var options = {
@@ -73,7 +78,7 @@ setInterval(function() {
   options.form = {};
   options.form.tasks = JSON.stringify(oTaskArr)
   request.post(options, function(error,response,body){ 
-    var msg = 'create task:'+oTaskArr.length+',total:'+keySet.length;
+    var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
     if(error){
       console.error(msg+',error:'+error.name+',msg:'+error.message);
     }else {
@@ -86,3 +91,7 @@ setInterval(function() {
     }
   });
 }, 60000);
+
+function currentDate(){
+  return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
+}
