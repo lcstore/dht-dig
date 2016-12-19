@@ -3,9 +3,10 @@ const DHT = require('bittorrent-dht')
 const util = require('util')
 const request=require('request');
 const moment=require('moment');
-
+const ed = require('ed25519-supercop')
 var opts = {
-  concurrency:2
+  concurrency:2,
+  verify:ed.verify
 }
 var dht = new DHT(opts)
 var oHashSet = {};
