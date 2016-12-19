@@ -1,8 +1,8 @@
-var DHT = require('bittorrent-dht')
+const DHT = require('bittorrent-dht')
 // var magnet = require('magnet-uri')
-var util = require('util')
-var request=require('request');
-var moment=require('moment');
+const util = require('util')
+const request=require('request');
+const moment=require('moment');
 
 var opts = {
   concurrency:2
@@ -13,9 +13,9 @@ var oHashSet = {};
 // dht.on('peer', function (peer, infoHash, from) {
 //   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
 // })
-
-dht.listen(6881, function () {
-  console.log('now listening')
+var port = 6881;
+dht.listen(port, function () {
+  console.log('['+currentDate()+']listening on:'+port)
 })
 
 dht.on('announce', function (peer, infoHash, from) {
@@ -23,20 +23,20 @@ dht.on('announce', function (peer, infoHash, from) {
   destObj.peer = peer;
   // destObj.from = from;
   destObj.infoHash = infoHash.toString('hex');
-  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  var sTime = currentDate()
   sTime = '['+sTime+']'
   console.log(sTime+'announce:' + JSON.stringify(destObj))
   // oHashSet[destObj.infoHash] = destObj;
 });
 
 dht.on('get', function (target, value) {
-  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  var sTime = currentDate()
   sTime = '['+sTime+']'
   console.log(sTime+'get,target:' + JSON.stringify(target)+',value:'+JSON.stringify(value))
 });
 
 dht.on('put', function (key, v) {
-  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  var sTime = currentDate()
   sTime = '['+sTime+']'
   console.log(sTime+'put,key:' + JSON.stringify(key)+',v:'+JSON.stringify(v))
 });
@@ -57,13 +57,7 @@ for (var i = 0; i < oInfoHashArr.length; i++) {
 
 
 setInterval(function() {
-  var destObj = {};
-  destObj.peer = {host:'127.0.0.1',port:999};
-  destObj.infoHash = 'd59643a3bdbe93f8c718e4e3ca2dd1b57cb4b4fe';
-  oHashSet[destObj.infoHash] = destObj;
-  destObj.infoHash = 'd5ac839e417b8446a8dae17051692e1e09c629c4';
-  oHashSet[destObj.infoHash] = destObj;
-  var type = 'torrent-info';
+  var type = 'megnet-torrent-info';
   var level = 100;
   var oTaskArr = [];
   var keySet = Object.keys(oHashSet);
@@ -77,13 +71,16 @@ setInterval(function() {
     oTask.level = level;
     oTask.url = oHash.infoHash;
     oTask.args = {};
+    var oUKey = {};
+    oUKey.key = oHash.infoHash;
+    oUKey.expire = 18000;
+    oTask.args.ukey = JSON.stringify(oUKey);
     oTask.args.retry = 0;
     oTask.args.peer = oPeer.host+':'+oPeer.port;
     oTaskArr.push(oTask);
-    delete oHashSet[key];
   };
-  console.log('create task:'+oTaskArr.length+',total:'+keySet.length)
   if(oTaskArr.length<1){
+    console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
     return;
   }
   var options = {
@@ -96,10 +93,20 @@ setInterval(function() {
   options.form = {};
   options.form.tasks = JSON.stringify(oTaskArr)
   request.post(options, function(error,response,body){ 
+    var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
     if(error){
-      console.error('error:'+error.name+',msg:'+error.message);
+      console.error(msg+',error:'+error.name+',msg:'+error.message);
     }else {
-      console.log('statusCode:'+response.statusCode+',body:'+body)
+      console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
+      for (var it = 0; it < oTaskArr.length; it++) {
+        var oTask = oTaskArr[it];
+        var infoHash = oHashSet.url;
+        delete oHashSet[infoHash];
+      };
     }
   });
-}, 1000);
+}, 60000);
+
+function currentDate(){
+  return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
+}
