@@ -26,7 +26,7 @@ dht.on('announce', function (peer, infoHash, from) {
   var sTime = currentDate()
   sTime = '['+sTime+']'
   console.log(sTime+'announce:' + JSON.stringify(destObj))
-  // oHashSet[destObj.infoHash] = destObj;
+  oHashSet[destObj.infoHash] = destObj;
 });
 
 dht.on('get', function (target, value) {
