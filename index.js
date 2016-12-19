@@ -2,6 +2,7 @@ var DHT = require('bittorrent-dht')
 // var magnet = require('magnet-uri')
 var util = require('util')
 var request=require('request');
+var moment=require('moment');
 
 var opts = {
   concurrency:2
@@ -22,8 +23,22 @@ dht.on('announce', function (peer, infoHash, from) {
   destObj.peer = peer;
   // destObj.from = from;
   destObj.infoHash = infoHash.toString('hex');
-  console.log('announce:' + JSON.stringify(destObj))
-  oHashSet[destObj.infoHash] = destObj;
+  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  sTime = '['+sTime+']'
+  console.log(sTime+'announce:' + JSON.stringify(destObj))
+  // oHashSet[destObj.infoHash] = destObj;
+});
+
+dht.on('get', function (target, value) {
+  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  sTime = '['+sTime+']'
+  console.log(sTime+'get,target:' + JSON.stringify(target)+',value:'+JSON.stringify(value))
+});
+
+dht.on('put', function (key, v) {
+  var sTime = moment().format('YYYY-MM-DD HH:mm:ss.SSS')
+  sTime = '['+sTime+']'
+  console.log(sTime+'put,key:' + JSON.stringify(key)+',v:'+JSON.stringify(v))
 });
 
 // find peers for the given torrent info hash
