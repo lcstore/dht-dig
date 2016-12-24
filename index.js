@@ -8,7 +8,7 @@ const Protocol = require('bittorrent-protocol')
 const net = require('net');
 const ut_metadata = require('ut_metadata');
 var opts = {
-  concurrency:2
+  concurrency:3
 }
 var dht = new DHT(opts)
 var oHashSet = {};
@@ -63,11 +63,7 @@ for (var i = 0; i < oInfoHashArr.length; i++) {
 
 
 setInterval(function() {
-  var oDestPeer = {host:'175.190.22.139',port:9291}
-  var infohash = 'b97d79914346fd1afb985e788ea846739974126f'
-  console.log('setInterval.findMetadata:' + infohash)
-  findMetadata(oDestPeer,infohash);
-  var type = 'megnet-torrent-info';
+  var type = 'torrage-torrent-info';
   var level = 100;
   var oTaskArr = [];
   var keySet = Object.keys(oHashSet);
