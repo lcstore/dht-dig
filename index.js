@@ -4,6 +4,9 @@ const util = require('util')
 const request=require('request');
 const moment=require('moment');
 const Peer=require('./lib/peer');
+const Protocol = require('bittorrent-protocol')
+const net = require('net');
+const ut_metadata = require('ut_metadata');
 var opts = {
   concurrency:2
 }
@@ -27,14 +30,8 @@ dht.on('announce', function (peer, infoHash, from) {
   sTime = '['+sTime+']'
   console.log(sTime+'announce:' + JSON.stringify(destObj))
   oHashSet[destObj.infoHash] = destObj;
-  var sPeer = peer.host+':'+peer.port;
-  var swarm = {};
-  swarm.infoHash = infoHash;
-  swarm.client = {};
-  swarm.client.peerId='1212'
-  console.log('swarm:'+JSON.stringify(swarm))
-  var peer = Peer.createTCPOutgoingPeer(sPeer,swarm);
-  peer.onConnect();
+  console.log(sTime+'findMetadata:' + infohash)
+  findMetadata(peer,infohash);
 });
 
 dht.on('get', function (target, value) {
@@ -64,7 +61,12 @@ for (var i = 0; i < oInfoHashArr.length; i++) {
 
 
 
+
 setInterval(function() {
+  var oDestPeer = {host:'175.190.22.139',port:9291}
+  var infohash = 'b97d79914346fd1afb985e788ea846739974126f'
+  console.log('setInterval.findMetadata:' + infohash)
+  findMetadata(oDestPeer,infohash);
   var type = 'megnet-torrent-info';
   var level = 100;
   var oTaskArr = [];
@@ -117,4 +119,41 @@ setInterval(function() {
 
 function currentDate(){
   return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
+}
+
+
+function findMetadata(oPeer,infohash){
+  var socket = new net.Socket();
+  socket.setTimeout(this.timeout || 5000);
+  socket.connect(oPeer.port, oPeer.host, function() {
+    var wire = new Protocol()
+    socket.pipe(wire).pipe(socket)
+    // initialize the extension
+    wire.use(ut_metadata())
+    // ask the peer to send us metadata
+    wire.ut_metadata.fetch()
+
+    // 'metadata' event will fire when the metadata arrives and is verified to be correct!
+    wire.ut_metadata.on('metadata', function (metadata) {
+      // got metadata!
+      console.log(infohash+',metadata:'+metadata)
+    })
+    wire.ut_metadata.on('warning', function (err) {
+      console.log('warning:'+err.message)
+    })
+    wire.handshake(new Buffer(infohash), new Buffer('my peer id'))
+  }.bind(this));
+
+  socket.on('error', function(err) {
+      socket.destroy();
+  }.bind(this));
+
+  socket.on('timeout', function(err) {
+      console.log(infohash+'.timeout ...')
+      socket.destroy();
+  }.bind(this));
+
+  socket.once('close', function(err) {
+      console.log(infohash+',close.socket,err:'+err.message)
+  }.bind(this));
 }
