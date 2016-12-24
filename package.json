@@ -12,9 +12,13 @@
   },
   "dependencies": {
     "bittorrent-dht": "^7.4.0",
+    "bittorrent-protocol": "^2.1.6",
+    "debug": "^2.5.1",
     "ed25519-supercop": "^1.0.2",
     "moment": "^2.17.1",
-    "request": "^2.79.0"
+    "request": "^2.79.0",
+    "unordered-array-remove": "^1.0.2",
+    "webtorrent": "^0.98.0"
   },
   "devDependencies": {
     "ip": "^1.1.0",
