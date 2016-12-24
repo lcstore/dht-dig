@@ -34,8 +34,8 @@ dht.on('announce', function (peer, infoHash, from) {
   sTime = '['+sTime+']'
   console.log(sTime+'announce:' + JSON.stringify(destObj))
   oHashSet[destObj.infoHash] = destObj;
-  console.log(sTime+'findMetadata:' + infohash)
-  findMetadata(peer,infohash);
+  console.log(sTime+'findMetadata:' + destObj.infoHash)
+  findMetadata(peer,destObj.infoHash);
 });
 
 dht.on('get', function (target, value) {
@@ -124,7 +124,7 @@ function currentDate(){
 
 function findMetadata(oPeer,infohash){
   var socket = new net.Socket();
-  socket.setTimeout(this.timeout || 5000);
+  socket.setTimeout(this.timeout || 20000);
   socket.connect(oPeer.port, oPeer.host, function() {
     var wire = new Protocol()
     socket.pipe(wire).pipe(socket)
