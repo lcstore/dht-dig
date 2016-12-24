@@ -13,12 +13,16 @@ var opts = {
 var dht = new DHT(opts)
 var oHashSet = {};
 
-// dht.on('peer', function (peer, infoHash, from) {
-//   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
-// })
+
 var port = 6881;
 dht.listen(port, function () {
   console.log('['+currentDate()+']listening on:'+port)
+})
+
+dht.on('peer', function (peer, infoHash, from) {
+  var sTime = currentDate()
+  sTime = '['+sTime+']'
+  console.log(sTime+'peer.peer:' + JSON.stringify(peer) + ',from:' + JSON.stringify(from)+',infoHash:'+infoHash.toString('hex'))
 })
 
 dht.on('announce', function (peer, infoHash, from) {
