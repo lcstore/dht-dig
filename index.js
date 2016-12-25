@@ -35,7 +35,8 @@ dht.on('announce', function (peer, infoHash, from) {
   console.log(sTime+'announce:' + JSON.stringify(destObj))
   oHashSet[destObj.infoHash] = destObj;
   console.log(sTime+'findMetadata:' + destObj.infoHash)
-  findMetadata(peer,destObj.infoHash);
+  findMetadata(peer,infoHash);
+  download(peer,infoHash);
 });
 
 dht.on('get', function (target, value) {
@@ -110,7 +111,7 @@ setInterval(function() {
       console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
       for (var it = 0; it < oTaskArr.length; it++) {
         var oTask = oTaskArr[it];
-        var infoHash = oHashSet.url;
+        var infoHash = oTask.url;
         delete oHashSet[infoHash];
       };
     }
@@ -136,7 +137,7 @@ function findMetadata(oPeer,infohash){
     // 'metadata' event will fire when the metadata arrives and is verified to be correct!
     wire.ut_metadata.on('metadata', function (metadata) {
       // got metadata!
-      console.log(infohash+',metadata:'+metadata)
+      console.log(infohash+',findMetadata,metadata:'+metadata)
     })
     wire.ut_metadata.on('warning', function (err) {
       console.log('warning:'+err.message)
@@ -157,3 +158,42 @@ function findMetadata(oPeer,infohash){
       console.log(infohash+',close.socket,err:'+err.message)
   }.bind(this));
 }
+
+
+var Wire = require('./lib/wire');
+
+function download(rinfo, infohash) {
+    var socket = new net.Socket();
+
+    socket.setTimeout(this.timeout || 50000);
+    socket.connect(rinfo.port, rinfo.host, function() {
+        var wire = new Wire(infohash);
+        socket.pipe(wire).pipe(socket);
+
+        wire.on('metadata', function(metadata, infoHash) {
+            successful = true;
+            console.log(infoHash+',download.complete')
+            this.emit('complete', metadata, infoHash, rinfo);
+            socket.destroy();
+        }.bind(this));
+
+        wire.on('fail', function() {
+            socket.destroy();
+        }.bind(this));
+
+        wire.sendHandshake();
+    }.bind(this));
+
+    socket.on('error', function(err) {
+        console.log(infoHash+',download.error:'+err.message)
+        socket.destroy();
+    }.bind(this));
+
+    socket.on('timeout', function(err) {
+        socket.destroy();
+    }.bind(this));
+
+    socket.once('close', function() {
+      console.log('download,close')
+    }.bind(this));
+};
