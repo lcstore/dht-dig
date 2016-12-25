@@ -8,64 +8,129 @@ const Utils=require('./lib/utils');
 const Protocol = require('bittorrent-protocol')
 const net = require('net');
 const ut_metadata = require('ut_metadata');
-var opts = {
-  concurrency:3
+const parseTorrent = require('parse-torrent');
+
+
+function DigClient(){
+  this.oHashSet = {};
 }
-var dht = new DHT(opts)
-var oHashSet = {};
+DigClient.prototype.bootstrap = function(opts) {
+  self = this;
+  self.dht = new DHT(opts)
 
+  self.dht.listen(opts.dhtPort, function () {
+    console.log('['+currentDate()+']listening on:'+opts.dhtPort)
+  })
 
-var port = 6881;
-dht.listen(port, function () {
-  console.log('['+currentDate()+']listening on:'+port)
-})
+  self.dht.on('announce', function (peer, infoHash, from) {
+    var destObj = {};
+    destObj.peer = peer;
+    // destObj.from = from;
+    destObj.infoHash = infoHash.toString('hex');
+    var sTime = currentDate()
+    sTime = '['+sTime+']'
+    console.log(sTime+'announce:' + JSON.stringify(destObj))
+    if(!self.oHashSet[destObj.infoHash]){
+        console.log(sTime+'findMetadata:' + destObj.infoHash)
+        self.oHashSet[destObj.infoHash] = destObj;
+        self.findMetadata(peer,destObj.infoHash,callback);
+    }
+  });
 
-dht.on('peer', function (peer, infoHash, from) {
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'peer.peer:' + JSON.stringify(peer) + ',from:' + JSON.stringify(from)+',infoHash:'+infoHash.toString('hex'))
-})
+  // find peers for the given torrent info hash
+  var oInfoHashArr = [];
+  oInfoHashArr.push('83790a9ce6fbbedfb831cc2cb7f430cfc45874e1');
+  oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
+  oInfoHashArr.push('835de86fdf17100ce121ff823fed178a3f9e0173');
+  oInfoHashArr.push('837ccac40b1150cf483b2dd26f25504e903230b4');
+  oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
+  for (var i = 0; i < oInfoHashArr.length; i++) {
+    var sInfoHash = oInfoHashArr[i];
+    self.dht.lookup(sInfoHash)
+  };
+};
 
-dht.on('announce', function (peer, infoHash, from) {
-  var destObj = {};
-  destObj.peer = peer;
-  // destObj.from = from;
-  destObj.infoHash = infoHash.toString('hex');
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'announce:' + JSON.stringify(destObj))
-  oHashSet[destObj.infoHash] = destObj;
-  console.log(sTime+'findMetadata:' + destObj.infoHash)
-  findMetadata(peer,destObj.infoHash);
-  download(peer,infoHash);
-});
+DigClient.prototype.findMetadata = function(oPeer,infoHash) {
+  var self = this;
+  var destData;
+  var socket = new net.Socket();
+  socket.setTimeout(this.timeout || 20000);
+  socket.connect(oPeer.port, oPeer.host, function() {
+    var wire = new Protocol()
+    socket.pipe(wire).pipe(socket)
+    wire.use(ut_metadata())
+    wire.ut_metadata.fetch()
+    wire.ut_metadata.on('metadata', function (metadata) {
+      console.log(infoHash+',findMetadata,metadata:'+metadata)
+      destData = metadata;
+    })
+    wire.ut_metadata.on('warning', function (err) {
+      console.log('warning:'+err.message)
+    })
+    var peerId = Utils.randomID();
+    wire.handshake(infoHash,peerId)
+  }.bind(this));
 
-dht.on('get', function (target, value) {
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'get,target:' + JSON.stringify(target)+',value:'+JSON.stringify(value))
-});
+  socket.on('error', function(err) {
+      socket.destroy();
+  }.bind(this));
 
-dht.on('put', function (key, v) {
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'put,key:' + JSON.stringify(key)+',v:'+JSON.stringify(v))
-});
+  socket.on('timeout', function(err) {
+      socket.destroy();
+  }.bind(this));
 
-// find peers for the given torrent info hash
-var oInfoHashArr = [];
-oInfoHashArr.push('83790a9ce6fbbedfb831cc2cb7f430cfc45874e1');
-oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
-oInfoHashArr.push('835de86fdf17100ce121ff823fed178a3f9e0173');
-oInfoHashArr.push('837ccac40b1150cf483b2dd26f25504e903230b4');
-oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
-for (var i = 0; i < oInfoHashArr.length; i++) {
-  var sInfoHash = oInfoHashArr[i];
-  dht.lookup(sInfoHash)
+  socket.once('close', function() {
+      return self.saveMetadata(oPeer,infoHash,destData);
+  }.bind(this));
 };
 
 
+DigClient.prototype.saveMetadata = function(oPeer,infoHash,metadata) {
+     var self = this;
+     if(metadata){
+       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata)
+       var oTorrent = parseTorrent(metadata);
+       logger.info('oTorrent:'+JSON.stringify(oTorrent.files))
+       oTorrent = name2Chars(oTorrent);
+       logger.info('oTorrent:'+JSON.stringify(oTorrent))
+     }else {
+       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
+     }
+};
 
+function bufferChars(src){
+  if(!src){
+    return src;
+  }
+  if(util.isBuffer(src)){
+    return src.toString('utf-8');
+  }
+  return src;
+}
+function name2Chars (info) {
+  var oNameInfo = {};
+ // 将种子名用 md5 加密
+ oNameInfo.name = bufferChars(info.name);
+ oNameInfo.length = bufferChars(info.length);
+ oNameInfo.infoHash = bufferChars(info.infoHash).toUpperCase();
+ oNameInfo['name.utf-8'] = bufferChars(info['name.utf-8']);
+ var files = info.files;
+ oNameInfo.files = [];
+ for (var i = 0; i < files.length; i++) {
+  var file = files[i];
+  for (var key in file) {
+   if (key == "path" || key == "path.utf-8") {
+    for (var j = 0; j < file[key].length; j++) {
+     var text = file[key][j].toString();
+     file[key][j] = text;
+    }
+   }
+  
+  }
+   oNameInfo.files.push(file)
+ }
+ return oNameInfo;
+}
 
 
 setInterval(function() {
@@ -123,80 +188,7 @@ function currentDate(){
   return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
 }
 
-
-function findMetadata(oPeer,infohash){
-  var socket = new net.Socket();
-  socket.setTimeout(this.timeout || 20000);
-  socket.connect(oPeer.port, oPeer.host, function() {
-    var wire = new Protocol()
-    socket.pipe(wire).pipe(socket)
-    // initialize the extension
-    wire.use(ut_metadata())
-    // ask the peer to send us metadata
-    wire.ut_metadata.fetch()
-
-    // 'metadata' event will fire when the metadata arrives and is verified to be correct!
-    wire.ut_metadata.on('metadata', function (metadata) {
-      // got metadata!
-      console.log(infohash+',findMetadata,metadata:'+metadata)
-    })
-    wire.ut_metadata.on('warning', function (err) {
-      console.log('warning:'+err.message)
-    })
-    var peerId = Utils.randomID();
-    console.log('findMetadata.peerId:'+peerId+',infohash:'+infohash)
-    wire.handshake(infohash,peerId)
-  }.bind(this));
-
-  socket.on('error', function(err) {
-      socket.destroy();
-  }.bind(this));
-
-  socket.on('timeout', function(err) {
-      console.log(infohash+'.timeout ...')
-      socket.destroy();
-  }.bind(this));
-
-  socket.once('close', function(err) {
-      console.log(infohash+',close.socket,err:'+err.message)
-  }.bind(this));
+var opts = {
+  concurrency:3
 }
-
-
-var Wire = require('./lib/wire');
-
-function download(rinfo, infohash) {
-    var socket = new net.Socket();
-
-    socket.setTimeout(this.timeout || 50000);
-    socket.connect(rinfo.port, rinfo.host, function() {
-        var wire = new Wire(infohash);
-        socket.pipe(wire).pipe(socket);
-
-        wire.on('metadata', function(metadata, infoHash) {
-            successful = true;
-            console.log(infoHash+',download.complete metadata:'+JSON.stringify(metadata))
-            // this.emit('complete', metadata, infoHash, rinfo);
-            socket.destroy();
-        }.bind(this));
-
-        wire.on('fail', function() {
-            socket.destroy();
-        }.bind(this));
-
-        wire.sendHandshake();
-    }.bind(this));
-
-    socket.on('error', function(err) {
-        console.log(infohash+',download.error:'+err.message)
-        socket.destroy();
-    }.bind(this));
-
-    socket.on('timeout', function(err) {
-        socket.destroy();
-    }.bind(this));
-
-    socket.once('close', function() {
-      console.log('download,close')
-    }.bind(this));
-};
+new DigClient().bootstrap(opts)
