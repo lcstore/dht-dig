@@ -84,7 +84,7 @@ DigClient.prototype.bootstrap = function(opts) {
     if(!self.oHashSet[destObj.infoHash]){
         console.log(sTime+'findMetadata:' + destObj.infoHash)
         self.oHashSet[destObj.infoHash] = destObj;
-        self.findMetadata(peer,destObj.infoHash,callback);
+        self.findMetadata(peer,destObj.infoHash);
     }
   });
 
