@@ -8,7 +8,6 @@ const Utils=require('./lib/utils');
 const Protocol = require('bittorrent-protocol')
 const net = require('net');
 const ut_metadata = require('ut_metadata');
-const ut_metadata = require('ut_metadata');
 var opts = {
   concurrency:3
 }
