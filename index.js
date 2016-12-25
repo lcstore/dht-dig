@@ -188,7 +188,7 @@ function download(rinfo, infohash) {
     }.bind(this));
 
     socket.on('error', function(err) {
-        console.log(infoHash+',download.error:'+err.message)
+        console.log(infohash+',download.error:'+err.message)
         socket.destroy();
     }.bind(this));
 
