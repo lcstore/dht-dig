@@ -8,7 +8,7 @@ const Utils=require('./lib/utils');
 const Protocol = require('bittorrent-protocol')
 const net = require('net');
 const ut_metadata = require('ut_metadata');
-const parseTorrent = require('parse-torrent');
+var parseTorrent = require('parse-torrent');
 
 
 function DigClient(){
