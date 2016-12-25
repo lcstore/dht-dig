@@ -68,7 +68,7 @@ function DigClient(){
 DigClient.prototype.bootstrap = function(opts) {
   self = this;
   self.dht = new DHT(opts)
-
+  opts.dhtPort = opts.dhtPort || 6881
   self.dht.listen(opts.dhtPort, function () {
     console.log('['+currentDate()+']listening on:'+opts.dhtPort)
   })
