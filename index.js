@@ -12,7 +12,58 @@ var parseTorrent = require('parse-torrent');
 
 
 function DigClient(){
-  this.oHashSet = {};
+  var self = this;
+  self.oHashSet = {};
+  setInterval(function() {
+    var type = 'torrage-torrent-info';
+    var level = 100;
+    var oTaskArr = [];
+    var keySet = Object.keys(self.oHashSet);
+    var maxCount = 200;
+    for (var i = 0; i < keySet.length && i<maxCount; i++) {
+      var key = keySet[i];
+      var oHash = self.oHashSet[key];
+      var oPeer = oHash.peer;
+      var oTask = {};
+      oTask.type = type;
+      oTask.level = level;
+      oTask.url = oHash.infoHash;
+      oTask.args = {};
+      var oUKey = {};
+      oUKey.key = oHash.infoHash;
+      oUKey.expire = 18000;
+      oTask.args.ukey = JSON.stringify(oUKey);
+      oTask.args.retry = 0;
+      oTask.args.peer = oPeer.host+':'+oPeer.port;
+      oTaskArr.push(oTask);
+    };
+    if(oTaskArr.length<1){
+      console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
+      return;
+    }
+    var options = {
+        headers: {
+         'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
+         'content-type':'application/x-www-form-urlencoded'
+        },
+        url: 'http://localhost:8090/taskmgr/createtasks'
+    };
+    options.form = {};
+    options.form.tasks = JSON.stringify(oTaskArr)
+    request.post(options, function(error,response,body){ 
+      var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
+      if(error){
+        console.error(msg+',error:'+error.name+',msg:'+error.message);
+      }else {
+        console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
+        for (var it = 0; it < oTaskArr.length; it++) {
+          var oTask = oTaskArr[it];
+          var infoHash = oTask.url;
+          delete self.oHashSet[infoHash];
+        };
+      }
+    });
+  }, 60000);
 }
 DigClient.prototype.bootstrap = function(opts) {
   self = this;
@@ -133,56 +184,7 @@ function name2Chars (info) {
 }
 
 
-setInterval(function() {
-  var type = 'torrage-torrent-info';
-  var level = 100;
-  var oTaskArr = [];
-  var keySet = Object.keys(oHashSet);
-  var maxCount = 200;
-  for (var i = 0; i < keySet.length && i<maxCount; i++) {
-    var key = keySet[i];
-    var oHash = oHashSet[key];
-    var oPeer = oHash.peer;
-    var oTask = {};
-    oTask.type = type;
-    oTask.level = level;
-    oTask.url = oHash.infoHash;
-    oTask.args = {};
-    var oUKey = {};
-    oUKey.key = oHash.infoHash;
-    oUKey.expire = 18000;
-    oTask.args.ukey = JSON.stringify(oUKey);
-    oTask.args.retry = 0;
-    oTask.args.peer = oPeer.host+':'+oPeer.port;
-    oTaskArr.push(oTask);
-  };
-  if(oTaskArr.length<1){
-    console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
-    return;
-  }
-  var options = {
-      headers: {
-       'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
-       'content-type':'application/x-www-form-urlencoded'
-      },
-      url: 'http://localhost:8090/taskmgr/createtasks'
-  };
-  options.form = {};
-  options.form.tasks = JSON.stringify(oTaskArr)
-  request.post(options, function(error,response,body){ 
-    var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
-    if(error){
-      console.error(msg+',error:'+error.name+',msg:'+error.message);
-    }else {
-      console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
-      for (var it = 0; it < oTaskArr.length; it++) {
-        var oTask = oTaskArr[it];
-        var infoHash = oTask.url;
-        delete oHashSet[infoHash];
-      };
-    }
-  });
-}, 60000);
+
 
 function currentDate(){
   return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
