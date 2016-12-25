@@ -4,8 +4,10 @@ const util = require('util')
 const request=require('request');
 const moment=require('moment');
 const Peer=require('./lib/peer');
+const Utils=require('./lib/utils');
 const Protocol = require('bittorrent-protocol')
 const net = require('net');
+const ut_metadata = require('ut_metadata');
 const ut_metadata = require('ut_metadata');
 var opts = {
   concurrency:3
@@ -35,7 +37,7 @@ dht.on('announce', function (peer, infoHash, from) {
   console.log(sTime+'announce:' + JSON.stringify(destObj))
   oHashSet[destObj.infoHash] = destObj;
   console.log(sTime+'findMetadata:' + destObj.infoHash)
-  findMetadata(peer,infoHash);
+  findMetadata(peer,destObj.infoHash);
   download(peer,infoHash);
 });
 
@@ -142,7 +144,9 @@ function findMetadata(oPeer,infohash){
     wire.ut_metadata.on('warning', function (err) {
       console.log('warning:'+err.message)
     })
-    wire.handshake(new Buffer(infohash), new Buffer('my peer id'))
+    var peerId = Utils.randomID();
+    console.log('findMetadata.peerId:'+peerId+',infohash:'+infohash)
+    wire.handshake(infohash,peerId)
   }.bind(this));
 
   socket.on('error', function(err) {
