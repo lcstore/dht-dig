@@ -175,8 +175,8 @@ function download(rinfo, infohash) {
 
         wire.on('metadata', function(metadata, infoHash) {
             successful = true;
-            console.log(infoHash+',download.complete')
-            this.emit('complete', metadata, infoHash, rinfo);
+            console.log(infoHash+',download.complete metadata:'+JSON.stringify(metadata))
+            // this.emit('complete', metadata, infoHash, rinfo);
             socket.destroy();
         }.bind(this));
 
