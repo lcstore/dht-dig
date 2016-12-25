@@ -112,7 +112,7 @@ DigClient.prototype.findMetadata = function(oPeer,infoHash) {
     wire.use(ut_metadata())
     wire.ut_metadata.fetch()
     wire.ut_metadata.on('metadata', function (metadata) {
-      console.log(infoHash+',findMetadata,metadata:'+metadata)
+      console.log(infoHash+',findMetadata,metadata:'+metadata.length)
       destData = metadata;
     })
     wire.ut_metadata.on('warning', function (err) {
@@ -141,9 +141,9 @@ DigClient.prototype.saveMetadata = function(oPeer,infoHash,metadata) {
      if(metadata){
        console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata)
        var oTorrent = parseTorrent(metadata);
-       logger.info('oTorrent:'+JSON.stringify(oTorrent.files))
+       console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
        oTorrent = name2Chars(oTorrent);
-       logger.info('oTorrent:'+JSON.stringify(oTorrent))
+       console.log('oTorrent:'+JSON.stringify(oTorrent))
      }else {
        console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
      }
