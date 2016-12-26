@@ -71,6 +71,12 @@ DigClient.prototype.bootstrap = function(opts) {
   opts.dhtPort = opts.dhtPort || 6881
   self.dht.listen(opts.dhtPort, function () {
     console.log('['+currentDate()+']listening on:'+opts.dhtPort)
+  });
+
+  self.dht.on('peer', function (peer, infoHash, from) {
+    var sTime = currentDate()
+    sTime = '['+sTime+']'
+    console.log(sTime+'peer.peer:' + JSON.stringify(peer) + ',from:' + JSON.stringify(from)+',infoHash:'+infoHash.toString('hex'))
   })
 
   self.dht.on('announce', function (peer, infoHash, from) {
