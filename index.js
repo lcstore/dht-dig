@@ -134,26 +134,9 @@ DigClient.prototype.bootstrap = function(opts) {
           if(metaData){
             console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metaData.length)
             var oTorrent = parseTorrent(metaData);
-            console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
             oTorrent = name2Chars(oTorrent);
-            console.log('oTorrent:'+JSON.stringify(oTorrent))
-            var oData = {};
-            oData.core = 'clink';
-            var oDocs = oData.docs = [];
-            var oDoc = {};
-            oDoc.id = makeId(oTorrent.infoHash);
-            oDoc.link = 'magnet:?xt=urn:btih:'+ oTorrent.infoHash;
-            oDoc.protocol = 'magnet';
-            oDoc.suffix = 'torrent';
-            oDoc.type =  'dht-dig-info';
-            oDoc.title =  oTorrent.name;
-            oDoc.code =  oTorrent.infoHash;
-            oDoc.space =  oTorrent.length;
-            oDoc.peer_s =  oPeer.host+':'+oPeer.port;
-            var creation = moment().format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
-            oDoc.creation = {add:creation}
-            var oPaths = oDoc.paths =  [];
-            var oLengths = oDoc.lengths =  [];
+            
+          
             var oFileArr = oTorrent.files;
             var oVideoReg = /\.(avi|mpg|divx|div|xvid|mpeg|wmv|asf|asx|mpe|m1v|m2v|dat|mp4|m4v|dv|dif|mjpg|mjpeg|mov|qt|rm|rmvb|3gp|3g2|h261|h264|yuv|raw|flv|swf|vob|mkv|ogm)$/ig;
             var oZipReg = /\.(rar|cab|arj|lzh|ace|7-zip|tar|gzip|uue|bz2|jar|iso|z)$/ig;
@@ -168,6 +151,25 @@ DigClient.prototype.bootstrap = function(opts) {
             }
             // isPass = true;
             if(isPass){
+              var oData = {};
+              oData.core = 'clink';
+              var oDocs = oData.docs = [];
+              var oDoc = {};
+              oDoc.id = makeId(oTorrent.infoHash);
+              oDoc.link = 'magnet:?xt=urn:btih:'+ oTorrent.infoHash;
+              oDoc.protocol = 'magnet';
+              oDoc.suffix = 'torrent';
+              oDoc.type =  'dht-dig-info';
+              oDoc.title =  oTorrent.name;
+              oDoc.code =  oTorrent.infoHash;
+              oDoc.space =  oTorrent.length;
+              oDoc.peer_s =  oPeer.host+':'+oPeer.port;
+              var creation = moment().format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+              oDoc.creation = {add:creation}
+
+              var oPaths = oDoc.paths =  [];
+              var oLengths = oDoc.lengths =  [];
+              
               oFileArr.sort(function(a,b){
                 return b.length - a.length;
               });
