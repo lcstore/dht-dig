@@ -182,6 +182,24 @@ DigClient.prototype.bootstrap = function(opts) {
               };
               oDocs.push(oDoc);
               console.log('docs:'+JSON.stringify(oDocs))
+              var options = {
+                  headers: {
+                   'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
+                  },
+                  url: 'http://www.lezomao.com/clink/update/json?commit=true'
+              };
+     
+              options.body = JSON.stringify(oDocs);
+              options.method='POST';
+
+              request(options, function(error,response){ 
+                var msg = '['+currentDate()+'],doc:'+oDocs.length;
+                if(error){
+                  console.error(msg+',error:'+error.name+',msg:'+error.message);
+                }else {
+                  console.log(msg+',statusCode:'+response.statusCode+',body:'+response.body)
+                }
+              });
             }
      
           }else {
