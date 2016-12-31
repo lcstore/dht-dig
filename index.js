@@ -132,11 +132,58 @@ DigClient.prototype.bootstrap = function(opts) {
         var oParam = destObj;
         self.q.push(oParam,function(oPeer,infoHash,metaData){
           if(metaData){
-            console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata.length)
+            console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metaData.length)
             var oTorrent = parseTorrent(metaData);
             console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
             oTorrent = name2Chars(oTorrent);
             console.log('oTorrent:'+JSON.stringify(oTorrent))
+            var oData = {};
+            oData.core = 'clink';
+            var oDocs = oData.docs = [];
+            var oDoc = {};
+            oDoc.id = makeId(oTorrent.infoHash);
+            oDoc.link = 'magnet:?xt=urn:btih:'+ oTorrent.infoHash;
+            oDoc.protocol = 'magnet';
+            oDoc.suffix = 'torrent';
+            oDoc.type =  'dht-dig-info';
+            oDoc.title =  oTorrent.name;
+            oDoc.code =  oTorrent.infoHash;
+            oDoc.space =  oTorrent.length;
+            oDoc.peer_s =  args.peer;
+            var creation = moment().format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+            oDoc.creation = {add:creation}
+            var oPaths = oDoc.paths =  [];
+            var oLengths = oDoc.lengths =  [];
+            var oFileArr = oTorrent.files;
+            var oVideoReg = /\.(avi|mpg|divx|div|xvid|mpeg|wmv|asf|asx|mpe|m1v|m2v|dat|mp4|m4v|dv|dif|mjpg|mjpeg|mov|qt|rm|rmvb|3gp|3g2|h261|h264|yuv|raw|flv|swf|vob|mkv|ogm)$/ig;
+            var oZipReg = /\.(rar|cab|arj|lzh|ace|7-zip|tar|gzip|uue|bz2|jar|iso|z)$/ig;
+            var isPass = false;
+            var minLen = 50*1024*1024;
+            for (var i = 0; i < oFileArr.length; i++) {
+              var oFile = oFileArr[i];
+              if(oFile.length > minLen && (oVideoReg.test(oFile.name))){
+                isPass = true;
+                break;
+              }
+            }
+            isPass = true;
+            if(isPass){
+              oFileArr.sort(function(a,b){
+                return b.length - a.length;
+              });
+              var paddingMark = '_____padding_file_';
+              for (var i = 0; i < oFileArr.length; i++) {
+                var oFile = oFileArr[i];
+                if(oFile.name.startWith(paddingMark)){
+                  continue;
+                }
+                oPaths.push(oFile.name);
+                oLengths.push(oFile.length);
+              };
+              oDocs.push(oDoc);
+              console.log('docs:'+JSON.stringify(oDocs))
+            }
+     
           }else {
             console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
           }
@@ -226,7 +273,26 @@ function name2Chars (info) {
  return oNameInfo;
 }
 
+function makeId(infoHash){
+   var source = 'magnet;'+infoHash;
+   source = source.toLowerCase();
+   var sCode = ''+toHashCode(source);
+   sCode = sCode.replace('-','0');
+   return 'm'+sCode;
+}
 
+function toHashCode(source) {
+  var hash = 0, i, chr, len;
+  if (typeof(source)=='undefined' || source===null){
+    return hash;
+  } 
+  for (i = 0, len = source.length; i < len; i++) {
+    chr   = source.charCodeAt(i);
+    hash  = ((hash << 5) - hash) + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+}
 
 
 function currentDate(){
