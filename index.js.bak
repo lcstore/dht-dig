@@ -3,110 +3,139 @@ const DHT = require('bittorrent-dht')
 const util = require('util')
 const request=require('request');
 const moment=require('moment');
-const ed = require('ed25519-supercop')
+// const Peer=require('./lib/peer');
+const Utils=require('./lib/utils');
+const Protocol = require('bittorrent-protocol')
+const net = require('net');
+const ut_metadata = require('ut_metadata');
+var parseTorrent = require('parse-torrent');
 var opts = {
-  concurrency:2,
-  verify:ed.verify
+  concurrency:3
 }
-var dht = new DHT(opts)
 var oHashSet = {};
+var dht = new DHT(opts)
+  opts.dhtPort = opts.dhtPort || 6881
+  dht.listen(opts.dhtPort, function () {
+    console.log('['+currentDate()+']listening on:'+opts.dhtPort)
+  });
 
-// dht.on('peer', function (peer, infoHash, from) {
-//   console.log('peer.peer:' + peer.host + ':' + peer.port + ',from:' + from.address + ':' + from.port+',infoHash:'+infoHash.toString('hex'))
-// })
-var port = 6881;
-dht.listen(port, function () {
-  console.log('['+currentDate()+']listening on:'+port)
-})
+  dht.on('peer', function (peer, infoHash, from) {
+    var sTime = currentDate()
+    sTime = '['+sTime+']'
+    console.log(sTime+'peer.peer:' + JSON.stringify(peer) + ',from:' + JSON.stringify(from)+',infoHash:'+infoHash.toString('hex'))
+  })
 
-dht.on('announce', function (peer, infoHash, from) {
-  var destObj = {};
-  destObj.peer = peer;
-  // destObj.from = from;
-  destObj.infoHash = infoHash.toString('hex');
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'announce:' + JSON.stringify(destObj))
-  oHashSet[destObj.infoHash] = destObj;
-});
+  dht.on('announce', function (peer, infoHash, from) {
+    var destObj = {};
+    destObj.peer = peer;
+    // destObj.from = from;
+    destObj.infoHash = infoHash.toString('hex');
+    var sTime = currentDate()
+    sTime = '['+sTime+']'
+    console.log(sTime+'announce:' + JSON.stringify(destObj))
+    if(!oHashSet[destObj.infoHash]){
+        console.log(sTime+'findMetadata:' + destObj.infoHash)
+        oHashSet[destObj.infoHash] = destObj;
+        findMetadata(peer,destObj.infoHash);
+    }
+  });
 
-dht.on('get', function (target, value) {
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'get,target:' + JSON.stringify(target)+',value:'+JSON.stringify(value))
-});
+  // find peers for the given torrent info hash
+  var oInfoHashArr = [];
+  oInfoHashArr.push('83790a9ce6fbbedfb831cc2cb7f430cfc45874e1');
+  oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
+  oInfoHashArr.push('835de86fdf17100ce121ff823fed178a3f9e0173');
+  oInfoHashArr.push('837ccac40b1150cf483b2dd26f25504e903230b4');
+  oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
+  for (var i = 0; i < oInfoHashArr.length; i++) {
+    var sInfoHash = oInfoHashArr[i];
+    dht.lookup(sInfoHash)
+  };
 
-dht.on('put', function (key, v) {
-  var sTime = currentDate()
-  sTime = '['+sTime+']'
-  console.log(sTime+'put,key:' + JSON.stringify(key)+',v:'+JSON.stringify(v))
-});
 
-// find peers for the given torrent info hash
-var oInfoHashArr = [];
-oInfoHashArr.push('83790a9ce6fbbedfb831cc2cb7f430cfc45874e1');
-oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
-oInfoHashArr.push('835de86fdf17100ce121ff823fed178a3f9e0173');
-oInfoHashArr.push('837ccac40b1150cf483b2dd26f25504e903230b4');
-oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
-for (var i = 0; i < oInfoHashArr.length; i++) {
-  var sInfoHash = oInfoHashArr[i];
-  dht.lookup(sInfoHash)
+function findMetadata(oPeer,infoHash) {
+  var self = this;
+  var destData;
+  var socket = new net.Socket();
+  socket.setTimeout(this.timeout || 20000);
+  socket.connect(oPeer.port, oPeer.host, function() {
+    var wire = new Protocol()
+    socket.pipe(wire).pipe(socket)
+    wire.use(ut_metadata())
+    wire.ut_metadata.fetch()
+    wire.ut_metadata.on('metadata', function (metadata) {
+      console.log(infoHash+',findMetadata,metadata:'+metadata.length)
+      destData = metadata;
+    })
+    wire.ut_metadata.on('warning', function (err) {
+      console.log('warning:'+err.message)
+    })
+    var peerId = Utils.randomID();
+    wire.handshake(infoHash,peerId)
+  }.bind(this));
+
+  socket.on('error', function(err) {
+      socket.destroy();
+  }.bind(this));
+
+  socket.on('timeout', function(err) {
+      socket.destroy();
+  }.bind(this));
+
+  socket.once('close', function() {
+      return saveMetadata(oPeer,infoHash,destData);
+  }.bind(this));
 };
 
 
+function saveMetadata(oPeer,infoHash,metadata) {
+     if(metadata){
+       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata)
+       var oTorrent = parseTorrent(metadata);
+       console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
+       oTorrent = name2Chars(oTorrent);
+       console.log('oTorrent:'+JSON.stringify(oTorrent))
+     }else {
+       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
+     }
+};
 
-
-setInterval(function() {
-  var type = 'megnet-torrent-info';
-  var level = 100;
-  var oTaskArr = [];
-  var keySet = Object.keys(oHashSet);
-  var maxCount = 200;
-  for (var i = 0; i < keySet.length && i<maxCount; i++) {
-    var key = keySet[i];
-    var oHash = oHashSet[key];
-    var oPeer = oHash.peer;
-    var oTask = {};
-    oTask.type = type;
-    oTask.level = level;
-    oTask.url = oHash.infoHash;
-    oTask.args = {};
-    var oUKey = {};
-    oUKey.key = oHash.infoHash;
-    oUKey.expire = 18000;
-    oTask.args.ukey = JSON.stringify(oUKey);
-    oTask.args.retry = 0;
-    oTask.args.peer = oPeer.host+':'+oPeer.port;
-    oTaskArr.push(oTask);
-  };
-  if(oTaskArr.length<1){
-    console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
-    return;
+function bufferChars(src){
+  if(!src){
+    return src;
   }
-  var options = {
-      headers: {
-       'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
-       'content-type':'application/x-www-form-urlencoded'
-      },
-      url: 'http://localhost:8090/taskmgr/createtasks'
-  };
-  options.form = {};
-  options.form.tasks = JSON.stringify(oTaskArr)
-  request.post(options, function(error,response,body){ 
-    var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
-    if(error){
-      console.error(msg+',error:'+error.name+',msg:'+error.message);
-    }else {
-      console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
-      for (var it = 0; it < oTaskArr.length; it++) {
-        var oTask = oTaskArr[it];
-        var infoHash = oHashSet.url;
-        delete oHashSet[infoHash];
-      };
+  if(util.isBuffer(src)){
+    return src.toString('utf-8');
+  }
+  return src;
+}
+function name2Chars (info) {
+  var oNameInfo = {};
+ // 将种子名用 md5 加密
+ oNameInfo.name = bufferChars(info.name);
+ oNameInfo.length = bufferChars(info.length);
+ oNameInfo.infoHash = bufferChars(info.infoHash).toUpperCase();
+ oNameInfo['name.utf-8'] = bufferChars(info['name.utf-8']);
+ var files = info.files;
+ oNameInfo.files = [];
+ for (var i = 0; i < files.length; i++) {
+  var file = files[i];
+  for (var key in file) {
+   if (key == "path" || key == "path.utf-8") {
+    for (var j = 0; j < file[key].length; j++) {
+     var text = file[key][j].toString();
+     file[key][j] = text;
     }
-  });
-}, 60000);
+   }
+  
+  }
+   oNameInfo.files.push(file)
+ }
+ return oNameInfo;
+}
+
+
+
 
 function currentDate(){
   return moment().format('YYYY-MM-DD HH:mm:ss.SSS');

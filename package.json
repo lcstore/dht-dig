@@ -11,16 +11,14 @@
     "url": "https://github.com/lcstore/dht-dig/issues"
   },
   "dependencies": {
+    "async": "^2.1.4",
     "bittorrent-dht": "^7.4.0",
     "bittorrent-protocol": "^2.1.6",
     "debug": "^2.5.1",
-    "ed25519-supercop": "^1.0.2",
     "moment": "^2.17.1",
     "parse-torrent": "^5.8.1",
     "request": "^2.79.0",
-    "unordered-array-remove": "^1.0.2",
-    "ut_metadata": "^3.0.8",
-    "webtorrent": "^0.98.0"
+    "ut_metadata": "^3.0.8"
   },
   "devDependencies": {
     "ip": "^1.1.0",

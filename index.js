@@ -8,24 +8,116 @@ const Utils=require('./lib/utils');
 const Protocol = require('bittorrent-protocol')
 const net = require('net');
 const ut_metadata = require('ut_metadata');
+const async = require('async');
 var parseTorrent = require('parse-torrent');
-var opts = {
-  concurrency:3
+
+
+function DigClient(){
+  var self = this;
+  self.oHashSet = {};
+  self.wokerCount =1;
+  self.timeout =20000;
+  self.q = async.queue(function (oParam, iCb) {
+      var oPeer = oParam.peer;
+      var infoHash = oParam.infoHash;
+      var destData;
+      var socket = new net.Socket();
+      socket.setTimeout(self.timeout || 20000);
+      socket.connect(oPeer.port, oPeer.host, function() {
+        var wire = new Protocol()
+        socket.pipe(wire).pipe(socket)
+        wire.use(ut_metadata())
+        wire.ut_metadata.fetch()
+        wire.ut_metadata.on('metadata', function (metadata) {
+          console.log(infoHash+',findMetadata,metadata:'+metadata.length)
+          destData = metadata;
+        })
+        wire.ut_metadata.on('warning', function (err) {
+          console.log('warning:'+err.message)
+        })
+        var peerId = Utils.randomID();
+        wire.handshake(infoHash,peerId)
+      }.bind(this));
+
+      socket.on('error', function(err) {
+          socket.destroy();
+      }.bind(this));
+
+      socket.on('timeout', function(err) {
+          socket.destroy();
+      }.bind(this));
+
+      socket.once('close', function() {
+          return iCb(oPeer,infoHash,destData);
+      }.bind(this));
+       
+  }, self.wokerCount);
+  setInterval(function() {
+    var type = 'torrage-torrent-info';
+    var level = 100;
+    var oTaskArr = [];
+    var keySet = Object.keys(self.oHashSet);
+    var maxCount = 200;
+    for (var i = 0; i < keySet.length && i<maxCount; i++) {
+      var key = keySet[i];
+      var oHash = self.oHashSet[key];
+      var oPeer = oHash.peer;
+      var oTask = {};
+      oTask.type = type;
+      oTask.level = level;
+      oTask.url = oHash.infoHash;
+      oTask.args = {};
+      var oUKey = {};
+      oUKey.key = oHash.infoHash;
+      oUKey.expire = 18000;
+      oTask.args.ukey = JSON.stringify(oUKey);
+      oTask.args.retry = 0;
+      oTask.args.peer = oPeer.host+':'+oPeer.port;
+      oTaskArr.push(oTask);
+    };
+    if(oTaskArr.length<1){
+      console.log('['+currentDate()+']skip create task:'+oTaskArr.length+',total:'+keySet.length)
+      return;
+    }
+    var options = {
+        headers: {
+         'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
+         'content-type':'application/x-www-form-urlencoded'
+        },
+        url: 'http://localhost:8090/taskmgr/createtasks'
+    };
+    options.form = {};
+    options.form.tasks = JSON.stringify(oTaskArr)
+    request.post(options, function(error,response,body){ 
+      var msg = '['+currentDate()+']create task:'+oTaskArr.length+',total:'+keySet.length;
+      if(error){
+        console.error(msg+',error:'+error.name+',msg:'+error.message);
+      }else {
+        console.log(msg+',statusCode:'+response.statusCode+',body:'+body)
+        for (var it = 0; it < oTaskArr.length; it++) {
+          var oTask = oTaskArr[it];
+          var infoHash = oTask.url;
+          delete self.oHashSet[infoHash];
+        };
+      }
+    });
+  }, 60000);
 }
-var oHashSet = {};
-var dht = new DHT(opts)
+DigClient.prototype.bootstrap = function(opts) {
+  self = this;
+  self.dht = new DHT(opts)
   opts.dhtPort = opts.dhtPort || 6881
-  dht.listen(opts.dhtPort, function () {
+  self.dht.listen(opts.dhtPort, function () {
     console.log('['+currentDate()+']listening on:'+opts.dhtPort)
   });
 
-  dht.on('peer', function (peer, infoHash, from) {
+  self.dht.on('peer', function (peer, infoHash, from) {
     var sTime = currentDate()
     sTime = '['+sTime+']'
     console.log(sTime+'peer.peer:' + JSON.stringify(peer) + ',from:' + JSON.stringify(from)+',infoHash:'+infoHash.toString('hex'))
   })
 
-  dht.on('announce', function (peer, infoHash, from) {
+  self.dht.on('announce', function (peer, infoHash, from) {
     var destObj = {};
     destObj.peer = peer;
     // destObj.from = from;
@@ -33,10 +125,22 @@ var dht = new DHT(opts)
     var sTime = currentDate()
     sTime = '['+sTime+']'
     console.log(sTime+'announce:' + JSON.stringify(destObj))
-    if(!oHashSet[destObj.infoHash]){
+    if(!self.oHashSet[destObj.infoHash]){
         console.log(sTime+'findMetadata:' + destObj.infoHash)
-        oHashSet[destObj.infoHash] = destObj;
-        findMetadata(peer,destObj.infoHash);
+        self.oHashSet[destObj.infoHash] = destObj;
+        // self.findMetadata(peer,destObj.infoHash);
+        var oParam = destObj;
+        self.q.push(oParam,function(oPeer,infoHash,metaData){
+          if(metaData){
+            console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata.length)
+            var oTorrent = parseTorrent(metaData);
+            console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
+            oTorrent = name2Chars(oTorrent);
+            console.log('oTorrent:'+JSON.stringify(oTorrent))
+          }else {
+            console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
+          }
+        });
     }
   });
 
@@ -49,11 +153,11 @@ var dht = new DHT(opts)
   oInfoHashArr.push('8363e5a90bf277e1f33c2d3236571eb8a54b68d8');
   for (var i = 0; i < oInfoHashArr.length; i++) {
     var sInfoHash = oInfoHashArr[i];
-    dht.lookup(sInfoHash)
+    self.dht.lookup(sInfoHash)
   };
+};
 
-
-function findMetadata(oPeer,infoHash) {
+DigClient.prototype.findMetadata = function(oPeer,infoHash) {
   var self = this;
   var destData;
   var socket = new net.Socket();
@@ -83,22 +187,10 @@ function findMetadata(oPeer,infoHash) {
   }.bind(this));
 
   socket.once('close', function() {
-      return saveMetadata(oPeer,infoHash,destData);
+      return self.saveMetadata(oPeer,infoHash,destData);
   }.bind(this));
 };
 
-
-function saveMetadata(oPeer,infoHash,metadata) {
-     if(metadata){
-       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metadata)
-       var oTorrent = parseTorrent(metadata);
-       console.log('oTorrent.files:'+JSON.stringify(oTorrent.files))
-       oTorrent = name2Chars(oTorrent);
-       console.log('oTorrent:'+JSON.stringify(oTorrent))
-     }else {
-       console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
-     }
-};
 
 function bufferChars(src){
   if(!src){
@@ -140,3 +232,8 @@ function name2Chars (info) {
 function currentDate(){
   return moment().format('YYYY-MM-DD HH:mm:ss.SSS');
 }
+
+var opts = {
+  concurrency:3
+}
+new DigClient().bootstrap(opts)
