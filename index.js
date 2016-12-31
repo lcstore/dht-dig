@@ -166,7 +166,7 @@ DigClient.prototype.bootstrap = function(opts) {
                 break;
               }
             }
-            isPass = true;
+            // isPass = true;
             if(isPass){
               oFileArr.sort(function(a,b){
                 return b.length - a.length;
@@ -181,7 +181,7 @@ DigClient.prototype.bootstrap = function(opts) {
                 oLengths.push(oFile.length);
               };
               oDocs.push(oDoc);
-              console.log('docs:'+JSON.stringify(oDocs))
+              
               var options = {
                   headers: {
                    'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
@@ -200,6 +200,8 @@ DigClient.prototype.bootstrap = function(opts) {
                   console.log(msg+',statusCode:'+response.statusCode+',body:'+response.body)
                 }
               });
+            }else {
+              console.log('drop docs:'+JSON.stringify(oDocs))
             }
      
           }else {
