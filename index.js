@@ -149,7 +149,7 @@ DigClient.prototype.bootstrap = function(opts) {
             oDoc.title =  oTorrent.name;
             oDoc.code =  oTorrent.infoHash;
             oDoc.space =  oTorrent.length;
-            oDoc.peer_s =  args.peer;
+            oDoc.peer_s =  oPeer.host+':'+oPeer.port;
             var creation = moment().format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
             oDoc.creation = {add:creation}
             var oPaths = oDoc.paths =  [];
