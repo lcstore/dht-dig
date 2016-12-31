@@ -174,7 +174,7 @@ DigClient.prototype.bootstrap = function(opts) {
               var paddingMark = '_____padding_file_';
               for (var i = 0; i < oFileArr.length; i++) {
                 var oFile = oFileArr[i];
-                if(oFile.name.startWith(paddingMark)){
+                if(oFile.name.indexOf(paddingMark)==0){
                   continue;
                 }
                 oPaths.push(oFile.name);
