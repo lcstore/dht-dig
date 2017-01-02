@@ -127,7 +127,6 @@ DigClient.prototype.bootstrap = function(opts) {
     console.log(sTime+'announce:' + JSON.stringify(destObj))
     if(!self.oHashSet[destObj.infoHash]){
         console.log(sTime+'findMetadata:' + destObj.infoHash)
-        self.oHashSet[destObj.infoHash] = destObj;
         // self.findMetadata(peer,destObj.infoHash);
         var oParam = destObj;
         self.q.push(oParam,function(oPeer,infoHash,metaData){
@@ -135,7 +134,6 @@ DigClient.prototype.bootstrap = function(opts) {
             console.log(oPeer+',infoHash:'+infoHash+',saveMetadata,metadata:'+metaData.length)
             var oTorrent = parseTorrent(metaData);
             oTorrent = name2Chars(oTorrent);
-            
           
             var oFileArr = oTorrent.files;
             var oVideoReg = /\.(avi|mpg|divx|div|xvid|mpeg|wmv|asf|asx|mpe|m1v|m2v|dat|mp4|m4v|dv|dif|mjpg|mjpeg|mov|qt|rm|rmvb|3gp|3g2|h261|h264|yuv|raw|flv|swf|vob|mkv|ogm)$/ig;
@@ -207,6 +205,7 @@ DigClient.prototype.bootstrap = function(opts) {
             }
      
           }else {
+            self.oHashSet[destObj.infoHash] = destObj;
             console.log(oPeer+',infoHash:'+infoHash+',saveMetadata.null')
           }
         });
