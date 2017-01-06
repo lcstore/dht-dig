@@ -84,7 +84,7 @@ function DigClient(){
          'User-Agent':'Mozilla/5.0 (compatible; dig/1.0; +http://www.lezomao.com)',
          'content-type':'application/x-www-form-urlencoded'
         },
-        url: 'http://localhost:8090/taskmgr/createtasks'
+        url: 'http://www.lezomao.com:8090/taskmgr/createtasks'
     };
     options.form = {};
     options.form.tasks = JSON.stringify(oTaskArr)
