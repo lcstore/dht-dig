@@ -98,6 +98,9 @@ function DigClient(){
           var oTask = oTaskArr[it];
           var infoHash = oTask.url;
           delete self.oHashSet[infoHash];
+          if(it==oTaskArr.length-1){
+            self.dht.lookup(infoHash)
+          }
         };
       }
     });
